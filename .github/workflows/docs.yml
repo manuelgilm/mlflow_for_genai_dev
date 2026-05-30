@@ -52,6 +52,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
       - name: Deploy with mike
+        working-directory: .
         env:
           REF_TYPE: ${{ github.ref_type }}
           REF_NAME: ${{ github.ref_name }}
@@ -63,10 +64,10 @@ jobs:
 
           if [[ "${REF_TYPE}" == "tag" ]]; then
             VERSION="${REF_NAME#v}"
-            mike deploy --push --update-aliases "${VERSION}" latest
-            mike set-default --push latest
+            mike deploy --config-file mkdocs.yml --push --update-aliases "${VERSION}" latest
+            mike set-default --config-file mkdocs.yml --push latest
           elif [[ "${REF_TYPE}" == "branch" && "${REF_NAME}" == "main" ]]; then
-            mike deploy --push --update-aliases dev
+            mike deploy --config-file mkdocs.yml --push --update-aliases dev
           else
             if [[ -z "${INPUT_VERSION}" ]]; then
               echo "workflow_dispatch requires 'version' input"
@@ -74,16 +75,16 @@ jobs:
             fi
 
             if [[ -n "${INPUT_ALIAS}" ]]; then
-              mike deploy --push --update-aliases "${INPUT_VERSION}" "${INPUT_ALIAS}"
+              mike deploy --config-file mkdocs.yml --push --update-aliases "${INPUT_VERSION}" "${INPUT_ALIAS}"
             else
-              mike deploy --push --update-aliases "${INPUT_VERSION}"
+              mike deploy --config-file mkdocs.yml --push --update-aliases "${INPUT_VERSION}"
             fi
 
             if [[ "${INPUT_SET_DEFAULT}" == "true" ]]; then
               if [[ -n "${INPUT_ALIAS}" ]]; then
-                mike set-default --push "${INPUT_ALIAS}"
+                mike set-default --config-file mkdocs.yml --push "${INPUT_ALIAS}"
               else
-                mike set-default --push "${INPUT_VERSION}"
+                mike set-default --config-file mkdocs.yml --push "${INPUT_VERSION}"
               fi
             fi
           fi
