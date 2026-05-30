@@ -1,0 +1,89 @@
+name: Deploy versioned docs
+
+on:
+  push:
+    branches: [ "main" ]
+    tags: [ "v*" ]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to deploy (for example: 1.0 or dev)"
+        required: true
+        type: string
+      alias:
+        description: "Optional alias (for example: latest)"
+        required: false
+        type: string
+      set_default:
+        description: "Set this version as default"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+concurrency:
+  group: docs-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install mkdocs mkdocs-material mike
+
+      - name: Configure Git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Deploy with mike
+        env:
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_ALIAS: ${{ inputs.alias }}
+          INPUT_SET_DEFAULT: ${{ inputs.set_default }}
+        run: |
+          set -euo pipefail
+
+          if [[ "${REF_TYPE}" == "tag" ]]; then
+            VERSION="${REF_NAME#v}"
+            mike deploy --push --update-aliases "${VERSION}" latest
+            mike set-default --push latest
+          elif [[ "${REF_TYPE}" == "branch" && "${REF_NAME}" == "main" ]]; then
+            mike deploy --push --update-aliases dev
+          else
+            if [[ -z "${INPUT_VERSION}" ]]; then
+              echo "workflow_dispatch requires 'version' input"
+              exit 1
+            fi
+
+            if [[ -n "${INPUT_ALIAS}" ]]; then
+              mike deploy --push --update-aliases "${INPUT_VERSION}" "${INPUT_ALIAS}"
+            else
+              mike deploy --push --update-aliases "${INPUT_VERSION}"
+            fi
+
+            if [[ "${INPUT_SET_DEFAULT}" == "true" ]]; then
+              if [[ -n "${INPUT_ALIAS}" ]]; then
+                mike set-default --push "${INPUT_ALIAS}"
+              else
+                mike set-default --push "${INPUT_VERSION}"
+              fi
+            fi
+          fi
