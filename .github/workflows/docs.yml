@@ -68,6 +68,7 @@ jobs:
             mike set-default --config-file mkdocs.yml --push latest
           elif [[ "${REF_TYPE}" == "branch" && "${REF_NAME}" == "main" ]]; then
             mike deploy --config-file mkdocs.yml --push --update-aliases dev
+            mike set-default --config-file mkdocs.yml --push dev
           else
             if [[ -z "${INPUT_VERSION}" ]]; then
               echo "workflow_dispatch requires 'version' input"
